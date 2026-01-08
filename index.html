@@ -3,33 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistemi POS Profesional v5.1</title>
+    <title>Sistemi POS - Bessi Caffe</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; }
         
-        /* OPTIMIZIMI PËR PRINTER TERMOK */
+        /* OPTIMIZIMI PËR PRINTIMIN */
         @media print {
             @page { margin: 0; }
-            body { margin: 0; padding: 0; background: #fff; }
-            nav, main, .no-print { display: none !important; }
-            
-            #receipt-print {
-                display: block !important;
-                width: 72mm !important; /* Gjerësia standarde e sigurt për 80mm */
-                margin: 0 auto;
-                padding: 5mm;
-                color: #000 !important;
+            body > *:not(#receipt-print) { display: none !important; }
+            #receipt-print { 
+                display: block !important; 
+                width: 72mm !important; /* Gjerësi e sigurt për printerë 80mm dhe 58mm */
+                margin: 0 auto; 
+                padding: 5mm; 
                 font-family: 'Courier New', Courier, monospace !important;
             }
-            
-            #receipt-print * {
-                color: #000 !important;
-                background: transparent !important;
-            }
-            
-            .border-b-dashed { border-bottom: 1px dashed black !important; }
+            #receipt-print * { visibility: visible; color: black !important; }
         }
 
         #receipt-print { display: none; }
@@ -47,7 +38,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                 </div>
-                <span class="text-xl font-black tracking-tighter uppercase">FlashPOS</span>
+                <span class="text-xl font-black tracking-tighter uppercase italic">Bessi Caffe</span>
             </div>
             <div class="flex space-x-6 text-sm font-bold uppercase tracking-widest">
                 <button onclick="switchTab('pos')" id="btn-pos" class="opacity-60 hover:opacity-100 py-2 active-tab">Shitje</button>
@@ -75,8 +66,8 @@
                     <span>TOTAL:</span>
                     <span id="total-amount">0.00 ALL</span>
                 </div>
-                <button onclick="processSale()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 rounded-2xl shadow-lg transition-all transform active:scale-95 text-xl">
-                    FISKALIZO & PRINTO
+                <button onclick="processSale()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 rounded-2xl shadow-lg transition-all transform active:scale-95 text-xl uppercase tracking-tighter">
+                    Fiskalizo & Printo
                 </button>
             </div>
         </section>
@@ -131,48 +122,46 @@
         </div>
     </main>
 
-    <div id="receipt-print" style="color: black !important; background: white !important;">
-        <div style="text-align: center; margin-bottom: 10px;">
-            <div style="font-size: 22px; font-weight: 900; margin-bottom: 2px;">FLASHPOS</div>
-            <div style="font-size: 10px; border-top: 1px solid black; border-bottom: 1px solid black; display: inline-block; padding: 2px 5px; margin-bottom: 5px;">FATURË FISKALE</div>
-            <div style="font-size: 12px; font-weight: bold;">Besi Cafe</div>
-            <div style="font-size: 10px;">Tropojë - Cërrnicë</div>
-            <div style="font-size: 10px;">NUIS: L12345678W</div>
-            <div style="border-bottom: 1px dashed black; margin: 10px 0;"></div>
-            <div id="print-date" style="font-size: 10px; text-align: left;"></div>
+    <div id="receipt-print" class="bg-white text-black p-4">
+        <div class="text-center mb-4">
+            <div style="font-size: 24px; font-weight: 900; letter-spacing: -1px; margin-bottom: 5px; text-transform: uppercase;">Bessi Caffe</div>
+            <div style="font-size: 10px; text-transform: uppercase; font-weight: bold; border-top: 1px solid black; border-bottom: 1px solid black; display: inline-block; padding: 2px 10px; margin-bottom: 5px;">Faturë Fiskale</div>
+            <p style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">Tropojë - Cërrnicë</p>
+            <p style="font-size: 9px;">NUIS: L12345678W</p>
+            <p style="font-size: 9px;">------------------------------------------</p>
+            <p id="print-date" style="font-size: 10px; text-align: left;"></p>
         </div>
 
-        <table style="width: 100%; font-size: 11px; border-collapse: collapse; margin-bottom: 10px;">
+        <table style="width: 100%; font-size: 11px; margin-bottom: 10px; border-collapse: collapse;">
             <thead>
-                <tr style="border-bottom: 1px solid black;">
-                    <th style="text-align: left; padding: 5px 0;">ARTIKULLI</th>
-                    <th style="text-align: center;">SASI</th>
-                    <th style="text-align: right;">VLEFTA</th>
+                <tr style="border-bottom: 1px solid black; text-align: left;">
+                    <th style="padding-bottom: 5px;">Artikulli</th>
+                    <th style="text-align: center;">Sasi</th>
+                    <th style="text-align: center;">Çmimi</th>
+                    <th style="text-align: right;">Vlera</th>
                 </tr>
             </thead>
             <tbody id="print-items-body"></tbody>
         </table>
 
-        <div style="border-top: 1px dashed black; padding-top: 5px;">
-            <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold;">
+        <div style="border-top: 1px double black; padding-top: 5px;">
+            <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900;">
                 <span>TOTAL ALL:</span>
                 <span id="print-total"></span>
             </div>
-            <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px;">
+            <div style="display: flex; justify-content: space-between; font-size: 9px; margin-top: 4px;">
                 <span>TVSH (20%):</span>
                 <span id="print-tax"></span>
             </div>
         </div>
 
-        <div style="margin-top: 15px; font-size: 9px; border: 1px solid black; padding: 5px; word-break: break-all;">
-            <div><strong>NIVF:</strong> <span id="print-nivf"></span></div>
-            <div style="margin-top: 2px;"><strong>NSLF:</strong> <span id="print-nslf"></span></div>
-            <div style="margin-top: 2px;">TCR: TR992JS | OP: 001</div>
+        <div style="margin-top: 20px; font-size: 8px; border: 1px solid #ccc; padding: 5px; line-height: 1.4;">
+            <p><strong>NIVF:</strong> <span id="print-nivf"></span></p>
+            <p><strong>NSLF:</strong> <span id="print-nslf"></span></p>
+            <p><strong>TCR:</strong> TR992JS | <strong>Operatori:</strong> OP001</p>
         </div>
 
-        <div style="text-align: center; font-size: 11px; margin-top: 15px; font-weight: bold;">
-            JU FALEMINDERIT!
-        </div>
+        <p style="text-align: center; font-size: 10px; margin-top: 20px; font-weight: bold; text-transform: uppercase;">Ju faleminderit!</p>
     </div>
 
     <script>
@@ -204,11 +193,11 @@
             if(tab === 'mgmt') renderMgmt();
         }
 
-        // --- POS ---
+        // --- POS LOGIC ---
         function renderPOS() {
             const catBar = document.getElementById('cat-list-pos');
             catBar.innerHTML = ['Të gjitha', ...categories].map(c => `
-                <button onclick="currentCat='${c}'; renderPOS()" class="px-5 py-2 rounded-xl font-bold transition whitespace-nowrap ${currentCat === c ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-600'}">
+                <button onclick="currentCat='${c}'; renderPOS()" class="px-5 py-2 rounded-xl font-bold transition whitespace-nowrap ${currentCat === c ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200'}">
                     ${c}
                 </button>
             `).join('');
@@ -216,8 +205,8 @@
             const grid = document.getElementById('prod-grid-pos');
             const filtered = currentCat === 'Të gjitha' ? products : products.filter(p => p.cat === currentCat);
             grid.innerHTML = filtered.map(p => `
-                <div onclick="addToCart(${p.id})" class="bg-white p-5 rounded-2xl shadow-sm border border-transparent hover:border-indigo-400 cursor-pointer">
-                    <div class="text-[10px] font-bold text-indigo-400 uppercase">${p.cat}</div>
+                <div onclick="addToCart(${p.id})" class="bg-white p-5 rounded-2xl shadow-sm border border-transparent hover:border-indigo-400 hover:shadow-lg cursor-pointer transition-all">
+                    <div class="text-[10px] font-bold text-indigo-400 uppercase mb-1">${p.cat}</div>
                     <div class="font-bold text-slate-800">${p.name}</div>
                     <div class="text-xl font-black text-slate-900 mt-2">${p.price} ALL</div>
                 </div>
@@ -234,29 +223,30 @@
 
         function updateCartUI() {
             const container = document.getElementById('cart-items');
-            container.innerHTML = cart.length === 0 ? '<p class="text-slate-400 text-center mt-20 italic">Zgjidhni produkte...</p>' :
+            container.innerHTML = cart.length === 0 ? '<p class="text-slate-400 text-center mt-20 italic text-sm">Zgjidhni produkte...</p>' :
                 cart.map(item => `
                     <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border">
-                        <div><div class="font-bold text-sm">${item.name}</div><div class="text-[10px]">${item.qty} x ${item.price}</div></div>
-                        <span class="font-black text-indigo-600">${item.qty * item.price}</span>
+                        <div><div class="font-bold text-slate-800 text-sm">${item.name}</div><div class="text-[10px] text-slate-400">${item.qty} x ${item.price} ALL</div></div>
+                        <div class="flex items-center space-x-3"><span class="font-black text-indigo-600">${item.qty * item.price}</span><button onclick="removeFromCart(${item.id})" class="text-red-400 font-bold">✕</button></div>
                     </div>
                 `).join('');
             const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
             document.getElementById('total-amount').innerText = total.toFixed(2) + " ALL";
         }
 
+        function removeFromCart(id) { cart = cart.filter(i => i.id !== id); updateCartUI(); }
         function clearCart() { cart = []; updateCartUI(); }
 
         // --- FISKALIZIMI DHE PRINTIMI ---
         function processSale() {
             if(cart.length === 0) return alert("Shtoni produkte!");
 
-            const nivf = (Math.random().toString(36).substring(2,15) + Math.random().toString(36).substring(2,15)).toUpperCase();
+            const nivf = (Math.random().toString(36).substring(2,16) + Math.random().toString(36).substring(2,16)).toUpperCase();
             const nslf = Math.random().toString(16).substring(2,12).toUpperCase();
             const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
             const date = new Date().toLocaleString('sq-AL');
 
-            // 1. Mbush të dhënat në HTML përpara printimit
+            // 1. Mbush të dhënat në faturën e printimit
             document.getElementById('print-date').innerText = "DATA: " + date;
             document.getElementById('print-total').innerText = total.toFixed(2) + " ALL";
             document.getElementById('print-tax').innerText = (total - (total/1.2)).toFixed(2) + " ALL";
@@ -264,9 +254,10 @@
             document.getElementById('print-nslf').innerText = nslf;
             
             document.getElementById('print-items-body').innerHTML = cart.map(i => `
-                <tr style="border-bottom: 1px dashed #ccc;">
+                <tr style="border-bottom: 1px solid #eee;">
                     <td style="padding: 5px 0;">${i.name.toUpperCase()}</td>
                     <td style="text-align: center;">${i.qty}</td>
+                    <td style="text-align: center;">${i.price}</td>
                     <td style="text-align: right; font-weight: bold;">${i.qty * i.price}</td>
                 </tr>
             `).join('');
@@ -275,63 +266,68 @@
             sales.unshift({ id: Date.now(), timestamp: date, items: [...cart], total: total, nivf: nivf });
             save();
 
-            // 3. Prit pak që DOM të përditësohet plotësisht dhe pastaj thirr printimin
+            // 3. Ekzekuto printimin me vonesë për të shmangur faturën bosh
             setTimeout(() => {
                 window.print();
                 clearCart();
-            }, 300);
+            }, 600);
         }
 
-        // --- HISTORY & MGMT ---
+        // --- HISTORIA & MENAXHIMI ---
         function renderHistory() {
             document.getElementById('history-table-body').innerHTML = sales.map(s => `
-                <tr>
-                    <td class="p-4 text-xs">${s.timestamp}</td>
-                    <td class="p-4 text-xs font-bold">${s.items.map(i => i.name).join(', ')}</td>
-                    <td class="p-4 text-right font-black text-indigo-600">${s.total.toFixed(2)} ALL</td>
+                <tr class="hover:bg-slate-50">
+                    <td class="p-4 text-xs font-medium text-slate-500">${s.timestamp}</td>
+                    <td class="p-4 text-xs font-bold">${s.items.map(i => i.name + ' (x'+i.qty+')').join(', ')}</td>
+                    <td class="p-4 font-black text-right text-indigo-600">${s.total.toFixed(2)} ALL</td>
                 </tr>
             `).join('');
         }
 
-        function deleteHistory() { if(confirm("Fshij historinë?")) { sales = []; save(); renderHistory(); } }
+        function deleteHistory() {
+            if(confirm("Jeni i sigurt që dëshironi të fshini të gjithë historinë?")) {
+                sales = []; save(); renderHistory();
+            }
+        }
 
         function downloadReport() {
-            let csv = "Data,Produkti,Sasia,Totali\n";
-            sales.forEach(s => s.items.forEach(i => csv += `${s.timestamp},${i.name},${i.qty},${i.qty * i.price}\n`));
+            if(sales.length === 0) return alert("Nuk ka të dhëna!");
+            let csv = "Data,Produkti,Sasia,Cmimi,Total\n";
+            sales.forEach(s => s.items.forEach(i => csv += `${s.timestamp},${i.name},${i.qty},${i.price},${i.qty * i.price}\n`));
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
-            a.download = `raporti_${new Date().toLocaleDateString()}.csv`;
+            a.href = url; a.download = `raporti_${new Date().toLocaleDateString()}.csv`;
             a.click();
         }
 
         function renderMgmt() {
             document.getElementById('mgmt-cat-list').innerHTML = categories.map(c => `
-                <div class="flex justify-between bg-white p-3 rounded-lg border shadow-sm">
-                    <span class="font-bold">${c}</span>
-                    <button onclick="removeCategory('${c}')" class="text-red-400">✕</button>
+                <div class="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
+                    <span class="font-bold text-slate-700">${c}</span>
+                    <button onclick="removeCategory('${c}')" class="text-red-400 font-bold hover:text-red-600">✕</button>
                 </div>
             `).join('');
             document.getElementById('new-prod-cat').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
             document.getElementById('mgmt-prod-list').innerHTML = products.map(p => `
-                <div class="flex justify-between p-3 hover:bg-slate-50">
-                    <div><div class="font-bold text-sm">${p.name}</div><div class="text-[10px] text-indigo-400 uppercase">${p.cat}</div></div>
-                    <div class="flex items-center space-x-4"><span class="font-black">${p.price} ALL</span><button onclick="removeProduct(${p.id})" class="text-red-400">✕</button></div>
+                <div class="flex justify-between items-center p-3 hover:bg-slate-50">
+                    <div><div class="font-bold text-sm text-slate-800">${p.name}</div><div class="text-[10px] uppercase font-bold text-indigo-400">${p.cat}</div></div>
+                    <div class="flex items-center space-x-4"><span class="font-black text-slate-700">${p.price} ALL</span><button onclick="removeProduct(${p.id})" class="text-red-400 font-bold">✕</button></div>
                 </div>
             `).join('');
         }
 
         function addCategory() {
             const name = document.getElementById('new-cat-name').value.trim();
-            if(name) { categories.push(name); save(); renderMgmt(); document.getElementById('new-cat-name').value = ''; }
+            if(name && !categories.includes(name)) { categories.push(name); save(); renderMgmt(); document.getElementById('new-cat-name').value = ''; }
         }
         function removeCategory(name) { categories = categories.filter(c => c !== name); save(); renderMgmt(); }
         function addProduct() {
             const name = document.getElementById('new-prod-name').value;
             const price = document.getElementById('new-prod-price').value;
             const cat = document.getElementById('new-prod-cat').value;
-            if(name && price) { products.push({ id: Date.now(), name, price: parseFloat(price), cat }); save(); renderMgmt(); }
+            if(name && price) { products.push({ id: Date.now(), name, price: parseFloat(price), cat }); save(); renderMgmt(); 
+                document.getElementById('new-prod-name').value = ''; document.getElementById('new-prod-price').value = ''; }
         }
         function removeProduct(id) { products = products.filter(p => p.id !== id); save(); renderMgmt(); }
 
