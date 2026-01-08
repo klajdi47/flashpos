@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistemi POS Profesional v5.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* RREGULLIMI PËR PRINTIMIN */
+        @media print {
+            body > *:not(#receipt-print) { display: none !important; }
+            #receipt-print { display: block !important; width: 80mm; margin: 0; padding: 0; }
+            #receipt-print * { visibility: visible; }
+            /* Sigurohemi që asnjë QR kod të mos shfaqet */
+            #qrcode, .qr-container { display: none !important; visibility: hidden !important; }
+        }
+
+        #receipt-print { display: none; }
+        .active-tab { border-bottom: 4px solid white; opacity: 1 !important; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col overflow-hidden">
+
+    <nav class="bg-slate-900 text-white p-4 shadow-2xl flex justify-between items-center no-print">
+        <div class="flex items-center space-x-8">
+            <div class="flex items-center space-x-2">
+                <div class="bg-indigo-500 p-1.5 rounded-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </div>
+                <span class="text-xl font-black tracking-tighter uppercase">FlashPOS</span>
+            </div>
+            <div class="flex space-x-6 text-sm font-bold uppercase tracking-widest">
+                <button onclick="switchTab('pos')" id="btn-pos" class="opacity-60 hover:opacity-100 py-2 active-tab">Shitje</button>
+                <button onclick="switchTab('history')" id="btn-history" class="opacity-60 hover:opacity-100 py-2">Historia</button>
+                <button onclick="switchTab('mgmt')" id="btn-mgmt" class="opacity-60 hover:opacity-100 py-2">Menaxhimi</button>
+            </div>
+        </div>
+        <div id="live-clock" class="text-xs font-mono bg-slate-800 px-3 py-1 rounded-full text-indigo-300"></div>
+    </nav>
+
+    <main id="tab-pos" class="flex flex-1 overflow-hidden">
+        <section class="w-2/3 flex flex-col p-6 space-y-6">
+            <div id="cat-list-pos" class="flex space-x-3 overflow-x-auto hide-scrollbar pb-2"></div>
+            <div id="prod-grid-pos" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto h-full content-start"></div>
+        </section>
+
+        <section class="w-1/3 bg-white border-l shadow-2xl flex flex-col">
+            <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
+                <h2 class="font-black text-slate-700 uppercase italic">Fatura</h2>
+                <button onclick="clearCart()" class="text-xs text-red-500 font-bold hover:underline">PASTRO</button>
+            </div>
+            <div id="cart-items" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+            <div class="p-6 border-t bg-slate-50 space-y-3">
+                <div class="flex justify-between text-2xl font-black text-slate-900 border-b pb-2">
+                    <span>TOTAL:</span>
+                    <span id="total-amount">0.00 ALL</span>
+                </div>
+                <button onclick="processSale()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-5 rounded-2xl shadow-lg transition-all transform active:scale-95 text-xl">
+                    FISKALIZO & PRINTA
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <main id="tab-history" class="hidden flex-1 p-8 overflow-y-auto">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-black text-slate-800">Historia & Raportet</h2>
+                <div class="flex space-x-3">
+                    <button onclick="downloadReport()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-emerald-700 transition">SHKARKO RAPORTIN (CSV)</button>
+                    <button onclick="deleteHistory()" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-red-600 transition">FSHIJ HISTORINË</button>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 border-b text-slate-400 text-xs font-bold uppercase">
+                        <tr>
+                            <th class="p-4">Data / Ora</th>
+                            <th class="p-4">Artikujt</th>
+                            <th class="p-4 text-right">Shuma Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <main id="tab-mgmt" class="hidden flex-1 p-8 overflow-y-auto">
+        <div class="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="space-y-4">
+                <h3 class="text-xl font-bold">1. Kategoritë</h3>
+                <div class="bg-white p-4 rounded-xl border flex space-x-2 shadow-sm">
+                    <input type="text" id="new-cat-name" placeholder="Emri i kategorisë..." class="flex-1 border p-2 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="addCategory()" class="bg-indigo-600 text-white px-6 rounded-lg font-bold hover:bg-indigo-700">SHTO</button>
+                </div>
+                <div id="mgmt-cat-list" class="space-y-2"></div>
+            </div>
+            <div class="space-y-4">
+                <h3 class="text-xl font-bold">2. Produktet</h3>
+                <div class="bg-white p-6 rounded-xl border space-y-3 shadow-sm">
+                    <input type="text" id="new-prod-name" placeholder="Emri i produktit" class="w-full border p-2 rounded-lg outline-none">
+                    <div class="flex space-x-2">
+                        <input type="number" id="new-prod-price" placeholder="Çmimi" class="w-1/2 border p-2 rounded-lg outline-none">
+                        <select id="new-prod-cat" class="w-1/2 border p-2 rounded-lg outline-none bg-white"></select>
+                    </div>
+                    <button onclick="addProduct()" class="w-full bg-slate-900 text-white py-2 rounded-lg font-bold hover:bg-slate-800 transition">SHTO PRODUKTIN</button>
+                </div>
+                <div id="mgmt-prod-list" class="bg-white rounded-xl border overflow-hidden divide-y shadow-sm"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="receipt-print" class="bg-white text-black p-4 font-mono">
+        <div class="text-center mb-4">
+            <div style="font-size: 26px; font-weight: 900; letter-spacing: -1px; margin-bottom: 5px;">FLASHPOS</div>
+            <div style="font-size: 10px; text-transform: uppercase; font-weight: bold; border-top: 1px solid black; border-bottom: 1px solid black; display: inline-block; padding: 2px 10px;">Faturë Fiskale</div>
+            <p style="font-size: 11px; margin-top: 10px; font-weight: bold;">RESTORANT & BAR ALBANIA</p>
+            <p style="font-size: 9px;">NUIS: L12345678W | Tiranë</p>
+            <p style="font-size: 9px;">------------------------------------------</p>
+            <p id="print-date" style="font-size: 10px;"></p>
+        </div>
+
+        <table style="width: 100%; font-size: 11px; margin-bottom: 10px; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid black; text-align: left;">
+                    <th style="padding-bottom: 5px;">Përshkrimi</th>
+                    <th style="text-align: center;">Sasi</th>
+                    <th style="text-align: right;">Vlefta</th>
+                </tr>
+            </thead>
+            <tbody id="print-items-body"></tbody>
+        </table>
+
+        <div style="border-top: 1px double black; padding-top: 5px;">
+            <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 900;">
+                <span>TOTAL ALL:</span>
+                <span id="print-total"></span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 9px; margin-top: 4px;">
+                <span>TVSH (20%):</span>
+                <span id="print-tax"></span>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px; font-size: 8px; border: 1px solid #ccc; padding: 5px; line-height: 1.4;">
+            <p><strong>NIVF:</strong> <span id="print-nivf"></span></p>
+            <p><strong>NSLF:</strong> <span id="print-nslf"></span></p>
+            <p><strong>TCR:</strong> TR992JS | <strong>Operatori:</strong> OP001</p>
+        </div>
+
+        <p style="text-align: center; font-size: 10px; margin-top: 20px; font-weight: bold; text-transform: uppercase;">Ju faleminderit!</p>
+    </div>
+
+    <script>
+        // --- DATA STATE ---
+        let categories = JSON.parse(localStorage.getItem('pos_cats')) || ['Kafe', 'Pije', 'Ushqim'];
+        let products = JSON.parse(localStorage.getItem('pos_prods')) || [
+            { id: 1, name: 'Ekspreso', price: 90, cat: 'Kafe' },
+            { id: 2, name: 'Ujë 0.5L', price: 60, cat: 'Pije' }
+        ];
+        let sales = JSON.parse(localStorage.getItem('pos_sales')) || [];
+        let cart = [];
+        let currentCat = 'Të gjitha';
+
+        function save() {
+            localStorage.setItem('pos_cats', JSON.stringify(categories));
+            localStorage.setItem('pos_prods', JSON.stringify(products));
+            localStorage.setItem('pos_sales', JSON.stringify(sales));
+        }
+
+        function switchTab(tab) {
+            ['pos', 'history', 'mgmt'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`btn-${t}`).classList.remove('active-tab');
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).classList.add('active-tab');
+            if(tab === 'pos') renderPOS();
+            if(tab === 'history') renderHistory();
+            if(tab === 'mgmt') renderMgmt();
+        }
+
+        // --- POS LOGIC ---
+        function renderPOS() {
+            const catBar = document.getElementById('cat-list-pos');
+            const allCats = ['Të gjitha', ...categories];
+            catBar.innerHTML = allCats.map(c => `
+                <button onclick="currentCat='${c}'; renderPOS()" class="px-5 py-2 rounded-xl font-bold transition whitespace-nowrap ${currentCat === c ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200'}">
+                    ${c}
+                </button>
+            `).join('');
+
+            const grid = document.getElementById('prod-grid-pos');
+            const filtered = currentCat === 'Të gjitha' ? products : products.filter(p => p.cat === currentCat);
+            grid.innerHTML = filtered.map(p => `
+                <div onclick="addToCart(${p.id})" class="bg-white p-5 rounded-2xl shadow-sm border border-transparent hover:border-indigo-400 hover:shadow-lg cursor-pointer transition-all">
+                    <div class="text-[10px] font-bold text-indigo-400 uppercase mb-1">${p.cat}</div>
+                    <div class="font-bold text-slate-800">${p.name}</div>
+                    <div class="text-xl font-black text-slate-900 mt-2">${p.price} ALL</div>
+                </div>
+            `).join('');
+        }
+
+        function addToCart(id) {
+            const p = products.find(i => i.id === id);
+            const existing = cart.find(i => i.id === id);
+            if(existing) existing.qty++;
+            else cart.push({...p, qty: 1});
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cart-items');
+            container.innerHTML = cart.length === 0 ? '<p class="text-slate-400 text-center mt-20 italic text-sm">Zgjidhni produkte...</p>' :
+                cart.map(item => `
+                    <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border">
+                        <div><div class="font-bold text-slate-800 text-sm">${item.name}</div><div class="text-[10px] text-slate-400">${item.qty} x ${item.price} ALL</div></div>
+                        <div class="flex items-center space-x-3"><span class="font-black text-indigo-600">${item.qty * item.price}</span><button onclick="removeFromCart(${item.id})" class="text-red-400 font-bold">✕</button></div>
+                    </div>
+                `).join('');
+            const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+            document.getElementById('total-amount').innerText = total.toFixed(2) + " ALL";
+        }
+
+        function removeFromCart(id) { cart = cart.filter(i => i.id !== id); updateCartUI(); }
+        function clearCart() { cart = []; updateCartUI(); }
+
+        // --- FISKALIZIMI ---
+        function processSale() {
+            if(cart.length === 0) return alert("Shtoni produkte!");
+
+            const nivf = (Math.random().toString(36).substring(2,16) + Math.random().toString(36).substring(2,16)).toUpperCase();
+            const nslf = Math.random().toString(16).substring(2,12).toUpperCase();
+            const total = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+            const date = new Date().toLocaleString('sq-AL');
+
+            // Mbush të dhënat për printim
+            document.getElementById('print-date').innerText = "DATA: " + date;
+            document.getElementById('print-total').innerText = total.toFixed(2) + " ALL";
+            document.getElementById('print-tax').innerText = (total - (total/1.2)).toFixed(2) + " ALL";
+            document.getElementById('print-nivf').innerText = nivf;
+            document.getElementById('print-nslf').innerText = nslf;
+            
+            document.getElementById('print-items-body').innerHTML = cart.map(i => `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 5px 0;">${i.name}</td>
+                    <td style="text-align: center;">${i.qty}</td>
+                    <td style="text-align: right; font-weight: bold;">${i.qty * i.price}</td>
+                </tr>
+            `).join('');
+
+            // Ruaj në histori
+            sales.unshift({ id: Date.now(), timestamp: date, items: [...cart], total: total, nivf: nivf });
+            save();
+
+            // Printimi
+            setTimeout(() => {
+                window.print();
+                clearCart();
+            }, 500);
+        }
+
+        // --- HISTORY & MANAGEMENT ---
+        function renderHistory() {
+            document.getElementById('history-table-body').innerHTML = sales.map(s => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-4 text-xs font-medium text-slate-500">${s.timestamp}</td>
+                    <td class="p-4 text-xs font-bold">${s.items.map(i => i.name + ' (x'+i.qty+')').join(', ')}</td>
+                    <td class="p-4 font-black text-right text-indigo-600">${s.total.toFixed(2)} ALL</td>
+                </tr>
+            `).join('');
+        }
+
+        function deleteHistory() {
+            if(confirm("Jeni i sigurt që dëshironi të fshini të gjithë historinë e shitjeve?")) {
+                sales = [];
+                save();
+                renderHistory();
+            }
+        }
+
+        function downloadReport() {
+            if(sales.length === 0) return alert("Nuk ka të dhëna për raport!");
+            let csv = "Data,Produkti,Sasia,Totali,NIVF\n";
+            sales.forEach(s => {
+                s.items.forEach(i => {
+                    csv += `${s.timestamp},${i.name},${i.qty},${i.qty * i.price},${s.nivf}\n`;
+                });
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `raporti_pos_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function renderMgmt() {
+            document.getElementById('mgmt-cat-list').innerHTML = categories.map(c => `
+                <div class="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
+                    <span class="font-bold text-slate-700">${c}</span>
+                    <button onclick="removeCategory('${c}')" class="text-red-400 font-bold hover:text-red-600 transition">FSHIJ</button>
+                </div>
+            `).join('');
+            document.getElementById('new-prod-cat').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('mgmt-prod-list').innerHTML = products.map(p => `
+                <div class="flex justify-between items-center p-3 hover:bg-slate-50 transition">
+                    <div><div class="font-bold text-sm text-slate-800">${p.name}</div><div class="text-[10px] uppercase font-bold text-indigo-400">${p.cat}</div></div>
+                    <div class="flex items-center space-x-4"><span class="font-black text-slate-700">${p.price} ALL</span><button onclick="removeProduct(${p.id})" class="text-red-400 font-bold">✕</button></div>
+                </div>
+            `).join('');
+        }
+
+        function addCategory() {
+            const name = document.getElementById('new-cat-name').value.trim();
+            if(name && !categories.includes(name)) { categories.push(name); save(); renderMgmt(); document.getElementById('new-cat-name').value = ''; }
+        }
+        function removeCategory(name) { categories = categories.filter(c => c !== name); save(); renderMgmt(); }
+        
+        function addProduct() {
+            const name = document.getElementById('new-prod-name').value;
+            const price = document.getElementById('new-prod-price').value;
+            const cat = document.getElementById('new-prod-cat').value;
+            if(name && price) { products.push({ id: Date.now(), name, price: parseFloat(price), cat }); save(); renderMgmt(); 
+                document.getElementById('new-prod-name').value = ''; document.getElementById('new-prod-price').value = ''; }
+        }
+        function removeProduct(id) { products = products.filter(p => p.id !== id); save(); renderMgmt(); }
+
+        setInterval(() => { document.getElementById('live-clock').innerText = new Date().toLocaleString('sq-AL'); }, 1000);
+        renderPOS();
+    </script>
+</body>
+</html>
